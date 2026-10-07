@@ -16,15 +16,18 @@ async function ensureOwnedCenter(centerId, ownerId, res) {
 // POST /api/centers/:centerId/members
 export async function createMember(req, res) {
   const center = await ensureOwnedCenter(req.params.centerId, req.owner._id, res);
-  const { name, phone, planDays, startDate } = req.body;
+  const { name, phone, planDays, startDate, memberType: rawMemberType } = req.body;
 
   if (!name || !phone) {
     res.status(400);
     throw new Error("name and phone are required");
   }
 
+  const memberType = rawMemberType === "pt" ? "pt" : "regular";
+  const planArray = memberType === "pt" ? (center.ptPlans || []) : (center.plans || []);
+
   const days = Number(planDays);
-  const allowed = (center.plans || []).map((p) => p.days);
+  const allowed = planArray.map((p) => p.days);
   if (!allowed.includes(days)) {
     res.status(400);
     throw new Error("Please select a valid plan for this centre");
@@ -48,7 +51,10 @@ export async function createMember(req, res) {
     joinDate,
     expiryDate,
     planDays: days,
+    memberType,
   });
+
+  const memberTypeLabel = memberType === "pt" ? "PT membership" : "membership";
 
   // Owner activity + member welcome notifications.
   notifyEvent({
@@ -56,7 +62,7 @@ export async function createMember(req, res) {
     role: "owner",
     type: "member_added",
     title: "New member added",
-    message: `${member.name} joined ${center.name} on a ${days}-day plan.`,
+    message: `${member.name} joined ${center.name} on a ${days}-day ${memberTypeLabel}.`,
     meta: { venue: center.name, memberName: member.name },
   });
   notifyEvent({
@@ -64,7 +70,7 @@ export async function createMember(req, res) {
     role: "member",
     type: "welcome",
     title: `Welcome to ${center.name}`,
-    message: `Your ${days}-day membership is active. Expires ${expiryDate.toLocaleDateString(
+    message: `Your ${days}-day ${memberTypeLabel} is active. Expires ${expiryDate.toLocaleDateString(
       "en-IN"
     )}.`,
     meta: { venue: center.name },
@@ -111,12 +117,19 @@ export async function updateMember(req, res) {
   const effectivePlan = planDays !== undefined ? Number(planDays) : member.planDays;
   if (planDays !== undefined) {
     centerDoc = await Center.findById(member.center);
-    const allowed = (centerDoc?.plans || []).map((p) => p.days);
+    const effectiveMemberType = req.body.memberType !== undefined
+      ? (req.body.memberType === "pt" ? "pt" : "regular")
+      : (member.memberType || "regular");
+    const planArray = effectiveMemberType === "pt" ? (centerDoc?.ptPlans || []) : (centerDoc?.plans || []);
+    const allowed = planArray.map((p) => p.days);
     if (!allowed.includes(Number(planDays))) {
       res.status(400);
       throw new Error("Please select a valid plan for this centre");
     }
     member.planDays = Number(planDays);
+  }
+  if (req.body.memberType !== undefined) {
+    member.memberType = req.body.memberType === "pt" ? "pt" : "regular";
   }
   if (effectivePlan) {
     const expiry = new Date(member.joinDate);
@@ -213,7 +226,10 @@ export async function renewMember(req, res) {
 
   const days = Number(req.body.planDays);
   const center = await Center.findById(member.center);
-  const allowed = (center?.plans || []).map((p) => p.days);
+  const planArray = (member.memberType || "regular") === "pt"
+    ? (center?.ptPlans || [])
+    : (center?.plans || []);
+  const allowed = planArray.map((p) => p.days);
   if (!allowed.includes(days)) {
     res.status(400);
     throw new Error("Please select a valid plan for this centre");

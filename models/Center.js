@@ -36,6 +36,20 @@ const centerSchema = new mongoose.Schema(
         { days: 360, price: 0 },
       ],
     },
+    ptPlans: {
+      type: [
+        {
+          days: { type: Number, required: true, min: 1 },
+          price: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [
+        { days: 30, price: 0 },
+        { days: 90, price: 0 },
+        { days: 180, price: 0 },
+        { days: 360, price: 0 },
+      ],
+    },
   },
   { timestamps: true }
 );

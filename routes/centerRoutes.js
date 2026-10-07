@@ -5,6 +5,7 @@ import {
   getCenter,
   updateCenter,
   updatePlans,
+  updatePtPlans,
   updateUpi,
   deleteCenter,
 } from "../controllers/centerController.js";
@@ -26,6 +27,7 @@ router
 
 // plan pricing
 router.put("/:id/plans", asyncHandler(updatePlans));
+router.put("/:id/pt-plans", asyncHandler(updatePtPlans));
 
 // UPI id (OTP-verified)
 router.put("/:id/upi", asyncHandler(updateUpi));

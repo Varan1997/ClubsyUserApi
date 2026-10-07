@@ -10,8 +10,9 @@ export async function listCenters(req, res) {
 
   const result = await Promise.all(
     centers.map(async (center) => {
-      const members = await Member.find({ center: center._id }).select("expiryDate");
-      return { ...center.toJSON(), summary: summarize(members) };
+      const members = await Member.find({ center: center._id }).select("expiryDate memberType");
+      const ptCount = members.filter((m) => m.memberType === "pt").length;
+      return { ...center.toJSON(), summary: { ...summarize(members), pt: ptCount } };
     })
   );
 
@@ -66,11 +67,12 @@ export async function getCenter(req, res) {
 
   const members = await Member.find({ center: center._id }).sort({ expiryDate: 1 });
   const now = new Date();
+  const ptCount = members.filter((m) => m.memberType === "pt").length;
 
   res.json({
     center: center.toJSON(),
     members: members.map((m) => withStatus(m, now)),
-    summary: summarize(members, now),
+    summary: { ...summarize(members, now), pt: ptCount },
   });
 }
 
@@ -137,6 +139,51 @@ export async function updatePlans(req, res) {
 
   cleaned.sort((a, b) => a.days - b.days);
   center.plans = cleaned;
+  await center.save();
+  res.json({ center: center.toJSON() });
+}
+
+// PUT /api/centers/:id/pt-plans  -> replace the centre's PT plans (OTP-verified)
+export async function updatePtPlans(req, res) {
+  const center = await findOwnedCenter(req.params.id, req.owner._id);
+  if (!center) {
+    res.status(404);
+    throw new Error("Center not found");
+  }
+
+  // Require a valid OTP (sent to the owner's phone) before saving.
+  await consumeOtp(req.owner.phone, req.body.otp);
+
+  const incoming = Array.isArray(req.body.plans) ? req.body.plans : [];
+  const cleaned = [];
+  const seenDays = new Set();
+
+  for (const p of incoming) {
+    const days = Number(p.days);
+    const price = Number(p.price);
+    if (!Number.isInteger(days) || days < 1) {
+      res.status(400);
+      throw new Error("Each plan needs a valid number of days (1 or more)");
+    }
+    if (Number.isNaN(price) || price < 0) {
+      res.status(400);
+      throw new Error("Each plan needs a valid price (0 or more)");
+    }
+    if (seenDays.has(days)) {
+      res.status(400);
+      throw new Error(`Duplicate plan: ${days} days appears more than once`);
+    }
+    seenDays.add(days);
+    cleaned.push({ days, price });
+  }
+
+  if (cleaned.length === 0) {
+    res.status(400);
+    throw new Error("Add at least one plan");
+  }
+
+  cleaned.sort((a, b) => a.days - b.days);
+  center.ptPlans = cleaned;
   await center.save();
   res.json({ center: center.toJSON() });
 }

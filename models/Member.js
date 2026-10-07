@@ -19,6 +19,7 @@ const memberSchema = new mongoose.Schema(
     joinDate: { type: Date, required: true },
     expiryDate: { type: Date, required: true },
     planDays: { type: Number, default: null },
+    memberType: { type: String, enum: ["regular", "pt"], default: "regular" },
   },
   { timestamps: true }
 );
