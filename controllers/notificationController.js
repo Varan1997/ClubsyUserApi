@@ -113,3 +113,17 @@ export async function markRead(req, res) {
   await Notification.updateMany(filter, { $set: { read: true } });
   res.json({ ok: true });
 }
+
+// DELETE /api/notifications/:id  — delete a single stored notification
+export async function deleteNotification(req, res) {
+  const phone = req.owner.phone;
+  const { id } = req.params;
+
+  // Only allow deleting own notifications
+  const result = await Notification.deleteOne({ _id: id, recipientPhone: phone });
+  if (result.deletedCount === 0) {
+    res.status(404);
+    throw new Error("Notification not found");
+  }
+  res.json({ ok: true });
+}

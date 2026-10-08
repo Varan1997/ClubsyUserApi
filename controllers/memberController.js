@@ -52,6 +52,16 @@ export async function createMember(req, res) {
     expiryDate,
     planDays: days,
     memberType,
+  }).catch((err) => {
+    // Mongo duplicate key on {center, phone, memberType}
+    if (err.code === 11000) {
+      const label = memberType === "pt" ? "PT membership" : "regular membership";
+      res.status(409);
+      throw new Error(
+        `This phone number already has a ${label} at this centre`
+      );
+    }
+    throw err;
   });
 
   const memberTypeLabel = memberType === "pt" ? "PT membership" : "membership";

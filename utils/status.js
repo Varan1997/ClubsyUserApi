@@ -31,10 +31,12 @@ export function withStatus(member, now = new Date()) {
 
 /**
  * Build dashboard counters for a list of members.
+ * Only counts regular members (not PT records) in the totals.
  */
 export function summarize(members, now = new Date()) {
-  const summary = { total: members.length, active: 0, expiring: 0, expired: 0 };
-  for (const m of members) {
+  const regular = members.filter((m) => (m.memberType || "regular") === "regular");
+  const summary = { total: regular.length, active: 0, expiring: 0, expired: 0 };
+  for (const m of regular) {
     const status = computeStatus(m.expiryDate, now);
     summary[status] += 1;
   }

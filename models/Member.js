@@ -24,6 +24,10 @@ const memberSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// One record per (center, phone, memberType) — a member can have both
+// a regular and a PT subscription at the same venue simultaneously.
+memberSchema.index({ center: 1, phone: 1, memberType: 1 }, { unique: true });
+
 memberSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.__v;

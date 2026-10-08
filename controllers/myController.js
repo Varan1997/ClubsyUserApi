@@ -13,11 +13,14 @@ export async function myMemberships(req, res) {
   const result = await Promise.all(
     members.map(async (m) => {
       const center = await Center.findById(m.center).select(
-        "name type location upiId plans"
+        "name type location upiId plans ptPlans"
       );
       const withS = withStatus(m, now);
-      // Attach the price the member is on (match plan days to the venue's plans).
-      const plan = (center?.plans || []).find((p) => p.days === m.planDays);
+      // Attach the price: use ptPlans for PT members, plans for regular.
+      const planArray = m.memberType === "pt"
+        ? (center?.ptPlans || [])
+        : (center?.plans || []);
+      const plan = planArray.find((p) => p.days === m.planDays);
       return {
         ...withS,
         venue: center
