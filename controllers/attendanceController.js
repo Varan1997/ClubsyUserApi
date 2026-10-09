@@ -4,11 +4,10 @@ import Member from "../models/Member.js";
 import Owner from "../models/Owner.js";
 import { notifyEvent } from "../utils/notify.js";
 
-// Day key YYYY-MM-DD in IST (UTC+5:30) — consistent regardless of server timezone
+// Day key YYYY-MM-DD in IST — works on any server timezone
 function dayKey(d = new Date()) {
-  return new Date(d.getTime() + 5.5 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  // en-CA gives YYYY-MM-DD format
 }
 
 // POST /api/attend/:venueId
