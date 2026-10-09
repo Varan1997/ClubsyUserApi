@@ -4,6 +4,21 @@ import { withStatus } from "../utils/status.js";
 import { consumeOtp } from "../utils/otp.js";
 import { notifyEvent } from "../utils/notify.js";
 
+/**
+ * Parse a yyyy-mm-dd string as IST midnight (UTC+5:30).
+ * Storing as IST midnight means the frontend's toLocaleDateString("en-GB")
+ * will always render the correct date regardless of server timezone.
+ *
+ * e.g. "2026-10-16" → 2026-10-15T18:30:00.000Z (= midnight IST Oct 16)
+ */
+function parseLocalDate(dateStr) {
+  const s = String(dateStr).slice(0, 10); // yyyy-mm-dd
+  // IST is UTC+5:30, so midnight IST = UTC prev-day 18:30
+  const d = new Date(`${s}T00:00:00+05:30`);
+  if (Number.isNaN(d.getTime())) throw new Error("Invalid date: " + dateStr);
+  return d;
+}
+
 async function ensureOwnedCenter(centerId, ownerId, res) {
   const center = await Center.findOne({ _id: centerId, owner: ownerId });
   if (!center) {
@@ -13,10 +28,17 @@ async function ensureOwnedCenter(centerId, ownerId, res) {
   return center;
 }
 
+// Strip any status suffixes that may have been accidentally included in a name
+// e.g. "Suresh (Expiring)" → "Suresh"
+function cleanName(name) {
+  return name.replace(/\s*\((expiring|expired|active)\)\s*$/i, "").trim();
+}
+
 // POST /api/centers/:centerId/members
 export async function createMember(req, res) {
   const center = await ensureOwnedCenter(req.params.centerId, req.owner._id, res);
-  const { name, phone, planDays, startDate, memberType: rawMemberType } = req.body;
+  const { name: rawName, phone, planDays, startDate, memberType: rawMemberType } = req.body;
+  const name = rawName ? cleanName(rawName) : rawName;
 
   if (!name || !phone) {
     res.status(400);
@@ -35,10 +57,13 @@ export async function createMember(req, res) {
 
   // Membership starts on the chosen start date (default today) and expires
   // after the plan duration.
-  const joinDate = startDate ? new Date(startDate) : new Date();
-  if (Number.isNaN(joinDate.getTime())) {
-    res.status(400);
-    throw new Error("Invalid start date");
+  let joinDate;
+  if (startDate) {
+    try { joinDate = parseLocalDate(startDate); } catch {
+      res.status(400); throw new Error("Invalid start date");
+    }
+  } else {
+    joinDate = new Date();
   }
   const expiryDate = new Date(joinDate);
   expiryDate.setDate(expiryDate.getDate() + days);
@@ -109,15 +134,14 @@ export async function updateMember(req, res) {
     await consumeOtp(req.owner.phone, otp);
   }
 
-  if (name !== undefined) member.name = name;
+  if (name !== undefined) member.name = cleanName(name);
   if (phone !== undefined) member.phone = phone;
 
   // Update the start date if provided.
   if (startDate !== undefined) {
-    const d = new Date(startDate);
-    if (Number.isNaN(d.getTime())) {
-      res.status(400);
-      throw new Error("Invalid start date");
+    let d;
+    try { d = parseLocalDate(startDate); } catch {
+      res.status(400); throw new Error("Invalid start date");
     }
     member.joinDate = d;
   }
@@ -245,12 +269,30 @@ export async function renewMember(req, res) {
     throw new Error("Please select a valid plan for this centre");
   }
 
-  // Extend from the later of today or the current expiry (so an active
-  // membership gets added on top, an expired one restarts from today).
-  const base = new Date(Math.max(Date.now(), new Date(member.expiryDate).getTime()));
-  base.setDate(base.getDate() + days);
-  member.expiryDate = base;
-  member.planDays = days;
+  // Always continue from the current expiry date, whether the member is active
+  // or expired. This means:
+  //   - Active: new plan stacks on top (no days lost)
+  //   - Expired: new plan starts from when the old one ended (continuous history)
+  //   - Expired + break: owner passes a custom startDate (member took a break)
+  let renewalStart;
+  if (req.body.startDate) {
+    // Owner explicitly chose a new start date (break scenario).
+    // Parse as IST midnight so the date matches what the owner selected.
+    try { renewalStart = parseLocalDate(req.body.startDate); } catch {
+      res.status(400);
+      throw new Error("Invalid start date");
+    }
+  } else {
+    // No break — continue from the stored expiry date
+    renewalStart = new Date(member.expiryDate);
+  }
+
+  const newExpiry = new Date(renewalStart);
+  newExpiry.setDate(newExpiry.getDate() + days);
+
+  member.joinDate   = renewalStart;
+  member.expiryDate = newExpiry;
+  member.planDays   = days;
 
   await member.save();
 

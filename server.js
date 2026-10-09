@@ -11,6 +11,7 @@ import memberRoutes from "./routes/memberRoutes.js";
 import myRoutes from "./routes/myRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import { startScheduler } from "./utils/scheduler.js";
 
 const app = express();
 
@@ -34,6 +35,8 @@ const PORT = process.env.PORT || 5000;
 connectDB(process.env.MONGO_URI)
   .then(() => {
     app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+    // Start expiry notification scheduler (runs every 5 hours)
+    startScheduler(5);
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);
