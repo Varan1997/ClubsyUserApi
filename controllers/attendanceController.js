@@ -4,10 +4,11 @@ import Member from "../models/Member.js";
 import Owner from "../models/Owner.js";
 import { notifyEvent } from "../utils/notify.js";
 
-// Local day key YYYY-MM-DD
+// Day key YYYY-MM-DD in IST (UTC+5:30) — consistent regardless of server timezone
 function dayKey(d = new Date()) {
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+  return new Date(d.getTime() + 5.5 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 // POST /api/attend/:venueId
