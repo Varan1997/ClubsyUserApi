@@ -1,0 +1,14 @@
+feat: every-2-hour expiry notification scheduler
+
+- utils/scheduler.js: scans all members expiring within EXPIRING_SOON_DAYS
+  or expired within last 7 days, creates stored notifications for both
+  the member and the venue owner
+- De-duplication: skips if same notification sent within last 20 hours
+  so repeated server restarts / interval fires don't spam
+- server.js: startScheduler(2) called after DB connects
+  — runs once immediately on startup then every 2 hours
+- Notification messages:
+    member expiring: "Your GYM membership expires in X days / tomorrow"
+    member expired:  "Your GYM membership expired X days ago"
+    owner expiring:  "NAME expiring in X days at GYM"
+    owner expired:   "NAME's membership expired X days ago"
