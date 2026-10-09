@@ -50,6 +50,7 @@ export async function markAttendance(req, res) {
   const timeStr = record.checkInAt.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Kolkata",
   });
   notifyEvent({
     recipientPhone: member.phone,
