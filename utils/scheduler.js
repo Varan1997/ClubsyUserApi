@@ -102,6 +102,9 @@ export async function runExpiryNotifications() {
       const isExpiring = !isExpired && daysLeft <= EXPIRING_SOON_DAYS;
 
       const meta = { memberId: String(m._id), venue: venueName, memberName: m.name };
+      const isPT = m.memberType === "pt";
+      const planLabel = isPT ? "PT membership" : "membership";
+      const ptPrefix  = isPT ? "PT · " : "";
 
       if (isExpiring) {
         const dayWord = daysLeft === 1 ? "tomorrow"
@@ -113,8 +116,8 @@ export async function runExpiryNotifications() {
           recipientPhone: m.phone,
           role:  "member",
           type:  "expiring",
-          title: daysLeft <= 2 ? `⚠️ Membership expiring ${dayWord}` : "Membership expiring soon",
-          message: `Your ${venueName} membership expires ${dayWord}. Renew to continue.`,
+          title: daysLeft <= 2 ? `⚠️ ${isPT ? "PT " : ""}Membership expiring ${dayWord}` : `${isPT ? "PT " : ""}Membership expiring soon`,
+          message: `Your ${venueName} ${planLabel} expires ${dayWord}. Renew to continue.`,
           meta,
         }));
 
@@ -124,8 +127,8 @@ export async function runExpiryNotifications() {
             recipientPhone: ownerPhone,
             role:  "owner",
             type:  "expiring",
-            title: daysLeft <= 2 ? `⚠️ ${m.name} expiring ${dayWord}` : `${m.name} expiring soon`,
-            message: `${m.name}'s membership at ${venueName} expires ${dayWord}.`,
+            title: daysLeft <= 2 ? `⚠️ ${ptPrefix}${m.name} expiring ${dayWord}` : `${ptPrefix}${m.name} expiring soon`,
+            message: `${m.name}'s ${planLabel} at ${venueName} expires ${dayWord}.`,
             meta,
           }));
         }
@@ -141,8 +144,8 @@ export async function runExpiryNotifications() {
           recipientPhone: m.phone,
           role:  "member",
           type:  "expired",
-          title: "Membership expired",
-          message: `Your ${venueName} membership expired ${agoWord}. Renew to regain access.`,
+          title: `${isPT ? "PT " : ""}Membership expired`,
+          message: `Your ${venueName} ${planLabel} expired ${agoWord}. Renew to regain access.`,
           meta,
         }));
 
