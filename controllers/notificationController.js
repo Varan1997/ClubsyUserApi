@@ -96,42 +96,42 @@ async function computeOwnerExpiryNotifs(ownerId) {
   for (const m of members) {
     const venueName = centerMap[String(m.center)] || "a venue";
     const daysLeft = Math.ceil((new Date(m.expiryDate).getTime() - now.getTime()) / DAY_MS);
+    const isPT = m.memberType === "pt";
+    const planLabel = isPT ? "PT membership" : "membership";
+    const ptPrefix  = isPT ? "PT · " : "";
 
     if (daysLeft === 1) {
-      // Expiring tomorrow
       out.push({
         _id: `owner-exp1-${m._id}`,
         virtual: true,
         role: "owner",
         type: "expiring",
-        title: "⚠️ Expiring tomorrow",
-        message: `${m.name} at ${venueName} — membership expires tomorrow. Consider renewing.`,
+        title: `⚠️ ${ptPrefix}Expiring tomorrow`,
+        message: `${m.name} at ${venueName} — ${planLabel} expires tomorrow. Consider renewing.`,
         read: false,
-        createdAt: new Date(now.getTime() - 1000), // just below "now" so it sorts after real-time items
+        createdAt: new Date(now.getTime() - 1000),
         meta: { venue: venueName, memberName: m.name, memberId: m._id },
       });
     } else if (daysLeft === 2) {
-      // Expiring in 2 days
       out.push({
         _id: `owner-exp2-${m._id}`,
         virtual: true,
         role: "owner",
         type: "expiring",
-        title: "Expiring in 2 days",
-        message: `${m.name} at ${venueName} — membership expires in 2 days.`,
+        title: `${ptPrefix}Expiring in 2 days`,
+        message: `${m.name} at ${venueName} — ${planLabel} expires in 2 days.`,
         read: false,
         createdAt: new Date(now.getTime() - 2000),
         meta: { venue: venueName, memberName: m.name, memberId: m._id },
       });
     } else if (daysLeft === -2) {
-      // Expired exactly 2 days ago — follow-up nudge
       out.push({
         _id: `owner-expd2-${m._id}`,
         virtual: true,
         role: "owner",
         type: "expired",
-        title: "Expired 2 days ago",
-        message: `${m.name} at ${venueName} — membership expired 2 days ago. Renew to re-activate.`,
+        title: `${ptPrefix}Expired 2 days ago`,
+        message: `${m.name} at ${venueName} — ${planLabel} expired 2 days ago. Renew to re-activate.`,
         read: false,
         createdAt: new Date(m.expiryDate),
         meta: { venue: venueName, memberName: m.name, memberId: m._id },

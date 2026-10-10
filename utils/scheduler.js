@@ -155,8 +155,8 @@ export async function runExpiryNotifications() {
             recipientPhone: ownerPhone,
             role:  "owner",
             type:  "expired",
-            title: `${m.name} membership expired`,
-            message: `${m.name}'s membership at ${venueName} expired ${agoWord}.`,
+            title: `${ptPrefix}${m.name} ${planLabel} expired`,
+            message: `${m.name}'s ${planLabel} at ${venueName} expired ${agoWord}.`,
             meta,
           }));
         }
