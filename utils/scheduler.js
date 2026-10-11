@@ -19,6 +19,7 @@
 import Member from "../models/Member.js";
 import Center from "../models/Center.js";
 import Notification from "../models/Notification.js";
+import { sendPushToPhone } from "./webpush.js";
 
 const DAY_MS  = 24 * 60 * 60 * 1000;
 const HOUR_MS =       60 * 60 * 1000;
@@ -49,6 +50,14 @@ async function alreadySent(recipientPhone, role, type, memberId) {
 async function maybeNotify({ recipientPhone, role, type, title, message, meta }) {
   if (await alreadySent(recipientPhone, role, type, meta.memberId)) return;
   await Notification.create({ recipientPhone, role, type, title, message, meta });
+
+  // Also send a Web Push notification to any subscribed devices
+  await sendPushToPhone(recipientPhone, role, {
+    title,
+    body: message,
+    icon: "/icons/icon-192.png",
+    url:  role === "owner" ? "/" : "/my",
+  });
 }
 
 /** Delete stored notifications older than RETENTION_HOURS. */

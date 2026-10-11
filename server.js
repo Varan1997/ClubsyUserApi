@@ -12,6 +12,7 @@ import myRoutes from "./routes/myRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import pushRoutes from "./routes/pushRoutes.js";
 import { startScheduler } from "./utils/scheduler.js";
 
 const app = express();
@@ -29,6 +30,7 @@ app.use("/api/members", memberRoutes);
 app.use("/api/my", myRoutes);
 app.use("/api/attend", attendanceRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/push", pushRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
